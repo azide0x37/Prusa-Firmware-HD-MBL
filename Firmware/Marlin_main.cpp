@@ -4415,7 +4415,7 @@ if((eSoundMode==e_SOUND_MODE_LOUD)||(eSoundMode==e_SOUND_MODE_ONCE))
 		unsigned int custom_message_type_old = custom_message_type;
 		unsigned int custom_message_state_old = custom_message_state;
 		custom_message_type = CUSTOM_MSG_TYPE_MESHBL;
-		custom_message_state = (MESH_MEAS_NUM_X_POINTS * MESH_MEAS_NUM_Y_POINTS) + 10;
+    custom_message_state = (nMeasPoints * nMeasPoints) + 10;
 		lcd_update(1);
 
 		mbl.reset(); //reset mesh bed leveling
@@ -4428,9 +4428,9 @@ if((eSoundMode==e_SOUND_MODE_LOUD)||(eSoundMode==e_SOUND_MODE_ONCE))
 		// First move up. During this first movement, the babystepping will be reverted.
 		current_position[Z_AXIS] = MESH_HOME_Z_SEARCH;
 		plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], homing_feedrate[Z_AXIS] / 60, active_extruder);
-		// The move to the first calibration point.
-		current_position[X_AXIS] = pgm_read_float(bed_ref_points);
-		current_position[Y_AXIS] = pgm_read_float(bed_ref_points + 1);
+    // The move to the first calibration point.
+    current_position[X_AXIS] = pgm_read_float(bed_ref_points);
+    current_position[Y_AXIS] = pgm_read_float(bed_ref_points + 1);
 
 		#ifdef SUPPORT_VERBOSITY
 		if (verbosity_level >= 1)
@@ -4451,7 +4451,7 @@ if((eSoundMode==e_SOUND_MODE_LOUD)||(eSoundMode==e_SOUND_MODE_ONCE))
 
 		int XY_AXIS_FEEDRATE = homing_feedrate[X_AXIS] / 20;
 		int Z_LIFT_FEEDRATE = homing_feedrate[Z_AXIS] / 40;
-		bool has_z = is_bed_z_jitter_data_valid(); //checks if we have data from Z calibration (offsets of the Z heiths of the 8 calibration points from the first point)
+    bool has_z = (nMeasPoints == 3) && is_bed_z_jitter_data_valid(); //checks if we have data from Z calibration (offsets of the Z heiths of the 8 calibration points from the first point)
 		#ifdef SUPPORT_VERBOSITY
 		if (verbosity_level >= 1) {
 			has_z ? SERIAL_PROTOCOLPGM("Z jitter data from Z cal. valid.\n") : SERIAL_PROTOCOLPGM("Z jitter data from Z cal. not valid.\n");
@@ -4459,38 +4459,38 @@ if((eSoundMode==e_SOUND_MODE_LOUD)||(eSoundMode==e_SOUND_MODE_ONCE))
 		#endif // SUPPORT_VERBOSITY
 		int l_feedmultiply = setup_for_endstop_move(false); //save feedrate and feedmultiply, sets feedmultiply to 100
 		const char *kill_message = NULL;
-		while (mesh_point != MESH_MEAS_NUM_X_POINTS * MESH_MEAS_NUM_Y_POINTS) {
-			// Get coords of a measuring point.
-			ix = mesh_point % MESH_MEAS_NUM_X_POINTS; // from 0 to MESH_NUM_X_POINTS - 1
-			iy = mesh_point / MESH_MEAS_NUM_X_POINTS;
-			if (iy & 1) ix = (MESH_MEAS_NUM_X_POINTS - 1) - ix; // Zig zag
-			float z0 = 0.f;
-			if (has_z && mesh_point > 0) {
-				uint16_t z_offset_u = eeprom_read_word((uint16_t*)(EEPROM_BED_CALIBRATION_Z_JITTER + 2 * (ix + iy * 3 - 1)));
-				z0 = mbl.z_values[0][0] + *reinterpret_cast<int16_t*>(&z_offset_u) * 0.01;
-				//#if 0
-				#ifdef SUPPORT_VERBOSITY
-				if (verbosity_level >= 1) {
-					SERIAL_ECHOLNPGM("");
-					SERIAL_ECHOPGM("Bed leveling, point: ");
-					MYSERIAL.print(mesh_point);
-					SERIAL_ECHOPGM(", calibration z: ");
-					MYSERIAL.print(z0, 5);
-					SERIAL_ECHOLNPGM("");
-				}
-				#endif // SUPPORT_VERBOSITY
-				//#endif
-			}
+		    while (mesh_point != nMeasPoints * nMeasPoints) {
+      // Get coords of a measuring point.
+      ix = mesh_point % nMeasPoints; // from 0 to MESH_NUM_X_POINTS - 1
+      iy = mesh_point / nMeasPoints;
+      if (iy & 1) ix = (nMeasPoints - 1) - ix; // Zig zag
+      float z0 = 0.f;
+      if (has_z && (mesh_point > 0)) {
+        uint16_t z_offset_u = eeprom_read_word((uint16_t*)(EEPROM_BED_CALIBRATION_Z_JITTER + 2 * (ix + iy * 3 - 1)));
+        z0 = mbl.z_values[0][0] + *reinterpret_cast<int16_t*>(&z_offset_u) * 0.01;
+        //#if 0
+        #ifdef SUPPORT_VERBOSITY
+        if (verbosity_level >= 1) {
+          SERIAL_ECHOLNPGM("");
+          SERIAL_ECHOPGM("Bed leveling, point: ");
+          MYSERIAL.print(mesh_point);
+          SERIAL_ECHOPGM(", calibration z: ");
+          MYSERIAL.print(z0, 5);
+          SERIAL_ECHOLNPGM("");
+        }
+        #endif // SUPPORT_VERBOSITY
+        //#endif
+      }
 
-			// Move Z up to MESH_HOME_Z_SEARCH.
-			current_position[Z_AXIS] = MESH_HOME_Z_SEARCH;
-			plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], Z_LIFT_FEEDRATE, active_extruder);
-			st_synchronize();
+      // Move Z up to MESH_HOME_Z_SEARCH.
+      current_position[Z_AXIS] = MESH_HOME_Z_SEARCH;
+      plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], Z_LIFT_FEEDRATE, active_extruder);
+      st_synchronize();
 
-			// Move to XY position of the sensor point.
-			current_position[X_AXIS] = pgm_read_float(bed_ref_points + 2 * mesh_point);
-			current_position[Y_AXIS] = pgm_read_float(bed_ref_points + 2 * mesh_point + 1);
-
+      // Move to XY position of the sensor point.
+      current_position[X_AXIS] = pgm_read_float(bed_ref_points + 2 * mesh_point);
+      current_position[Y_AXIS] = pgm_read_float(bed_ref_points + 2 * mesh_point + 1);
+      
 
 
 			world2machine_clamp(current_position[X_AXIS], current_position[Y_AXIS]);
@@ -4560,7 +4560,7 @@ if((eSoundMode==e_SOUND_MODE_LOUD)||(eSoundMode==e_SOUND_MODE_ONCE))
 		#endif // SUPPORT_VERBOSITY
 		plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], Z_LIFT_FEEDRATE, active_extruder);
 		st_synchronize();
-		if (mesh_point != MESH_MEAS_NUM_X_POINTS * MESH_MEAS_NUM_Y_POINTS) {
+    if (mesh_point != nMeasPoints * nMeasPoints) {
                Sound_MakeSound(e_SOUND_TYPE_StandardAlert);
                bool bState;
                do   {                             // repeat until Z-leveling o.k.
@@ -4614,58 +4614,63 @@ if((eSoundMode==e_SOUND_MODE_LOUD)||(eSoundMode==e_SOUND_MODE_ONCE))
 		}
 		#endif // SUPPORT_VERBOSITY
 
-		for (uint8_t i = 0; i < 4; ++i) {
-			unsigned char codes[4] = { 'L', 'R', 'F', 'B' };
-			long correction = 0;
-			if (code_seen(codes[i]))
-				correction = code_value_long();
-			else if (eeprom_bed_correction_valid) {
-				unsigned char *addr = (i < 2) ?
-					((i == 0) ? (unsigned char*)EEPROM_BED_CORRECTION_LEFT : (unsigned char*)EEPROM_BED_CORRECTION_RIGHT) :
-					((i == 2) ? (unsigned char*)EEPROM_BED_CORRECTION_FRONT : (unsigned char*)EEPROM_BED_CORRECTION_REAR);
-				correction = eeprom_read_int8(addr);
-			}
-			if (correction == 0)
-				continue;
-			
-			if (labs(correction) > BED_ADJUSTMENT_UM_MAX) {
-				SERIAL_ERROR_START;
-				SERIAL_ECHOPGM("Excessive bed leveling correction: ");
-				SERIAL_ECHO(correction);
-				SERIAL_ECHOLNPGM(" microns");
-			}
-			else {
-				float offset = float(correction) * 0.001f;
-				switch (i) {
-				case 0:
-					for (uint8_t row = 0; row < 3; ++row) {
-						mbl.z_values[row][1] += 0.5f * offset;
-						mbl.z_values[row][0] += offset;
-					}
-					break;
-				case 1:
-					for (uint8_t row = 0; row < 3; ++row) {
-						mbl.z_values[row][1] += 0.5f * offset;
-						mbl.z_values[row][2] += offset;
-					}
-					break;
-				case 2:
-					for (uint8_t col = 0; col < 3; ++col) {
-						mbl.z_values[1][col] += 0.5f * offset;
-						mbl.z_values[0][col] += offset;
-					}
-					break;
-				case 3:
-					for (uint8_t col = 0; col < 3; ++col) {
-						mbl.z_values[1][col] += 0.5f * offset;
-						mbl.z_values[2][col] += offset;
-					}
-					break;
-				}
-			}
-		}
-//		SERIAL_ECHOLNPGM("Bed leveling correction finished");
-		mbl.upsample_3x3(); //bilinear interpolation from 3x3 to 7x7 points while using the same array z_values[iy][ix] for storing (just coppying measured data to new destination and interpolating between them)
+    for (uint8_t i = 0; i < 4; ++i) {
+      unsigned char codes[4] = { 'L', 'R', 'F', 'B' };
+      long correction = 0;
+      if (code_seen(codes[i]))
+        correction = code_value_long();
+      else if (eeprom_bed_correction_valid) {
+        unsigned char *addr = (i < 2) ?
+          ((i == 0) ? (unsigned char*)EEPROM_BED_CORRECTION_LEFT : (unsigned char*)EEPROM_BED_CORRECTION_RIGHT) :
+          ((i == 2) ? (unsigned char*)EEPROM_BED_CORRECTION_FRONT : (unsigned char*)EEPROM_BED_CORRECTION_REAR);
+        correction = eeprom_read_int8(addr);
+      }
+      if (correction == 0)
+        continue;
+      float offset = float(correction) * 0.001f;
+      if (fabs(offset) > 0.101f) {
+        SERIAL_ERROR_START;
+        SERIAL_ECHOPGM("Excessive bed leveling correction: ");
+        SERIAL_ECHO(offset);
+        SERIAL_ECHOLNPGM(" microns");
+      }
+      else {
+        switch (i) {
+        case 0:
+          for (uint8_t row = 0; row < nMeasPoints; ++row) {
+            for (uint8_t col = 0; col < nMeasPoints - 1; ++col) {
+              mbl.z_values[row][col] += offset * (nMeasPoints - 1 - col) / (nMeasPoints - 1);
+            }
+          }
+          break;
+        case 1:
+          for (uint8_t row = 0; row < nMeasPoints; ++row) {
+            for (uint8_t col = 1; col < nMeasPoints; ++col) {
+              mbl.z_values[row][col] += offset * col / (nMeasPoints - 1);
+            }
+          }
+          break;
+        case 2:
+          for (uint8_t col = 0; col < nMeasPoints; ++col) {
+            for (uint8_t row = 0; row < nMeasPoints; ++row) {
+             mbl.z_values[row][col] += offset * (nMeasPoints - 1 - row) / (nMeasPoints - 1);
+            }
+          }
+          break;
+        case 3:
+          for (uint8_t col = 0; col < nMeasPoints; ++col) {
+            for (uint8_t row = 1; row < nMeasPoints; ++row) {
+              mbl.z_values[row][col] += offset * row / (nMeasPoints - 1);
+            }
+          }
+          break;
+        }
+      }
+    }
+//    SERIAL_ECHOLNPGM("Bed leveling correction finished");
+    if (nMeasPoints == 3) {
+      mbl.upsample_3x3(); //bilinear interpolation from 3x3 to 7x7 points while using the same array z_values[iy][ix] for storing (just coppying measured data to new destination and interpolating between them)
+    }
 //		SERIAL_ECHOLNPGM("Upsample finished");
 		mbl.active = 1; //activate mesh bed leveling
 //		SERIAL_ECHOLNPGM("Mesh bed leveling activated");
