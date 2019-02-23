@@ -4380,7 +4380,14 @@ if((eSoundMode==e_SOUND_MODE_LOUD)||(eSoundMode==e_SOUND_MODE_ONCE))
 			break;
 		} 
 		
-		
+		    uint8_t nMeasPoints = MESH_MEAS_NUM_X_POINTS;
+     if (code_seen('N')) {
+      nMeasPoints = code_value_uint8();
+      if (nMeasPoints != 7) {
+        nMeasPoints = 3;
+      }
+    }
+
 		bool temp_comp_start = true;
 #ifdef PINDA_THERMISTOR
 		temp_comp_start = false;
