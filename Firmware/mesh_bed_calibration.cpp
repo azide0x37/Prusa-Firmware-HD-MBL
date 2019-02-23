@@ -2399,7 +2399,7 @@ BedSkewOffsetDetectionResultType find_bed_offset_and_skew(int8_t verbosity_level
 					// Go to the measurement point.
 					// Use the coorrected coordinate, which is a result of find_bed_offset_and_skew().
 					uint8_t ix = mesh_point % MESH_MEAS_NUM_X_POINTS; // from 0 to MESH_NUM_X_POINTS - 1
-					current_position[Y_AXIS] = pgm_read_float(bed_ref_points + mesh_point * 2 + 1);						uint8_t iy = mesh_point / MESH_MEAS_NUM_X_POINTS;
+					uint8_t iy = mesh_point / MESH_MEAS_NUM_X_POINTS;
 					if (iy & 1) ix = (MESH_MEAS_NUM_X_POINTS - 1) - ix;
 					current_position[X_AXIS] = BED_X(ix, MESH_MEAS_NUM_X_POINTS);
 					current_position[Y_AXIS] = BED_Y(iy, MESH_MEAS_NUM_Y_POINTS);
